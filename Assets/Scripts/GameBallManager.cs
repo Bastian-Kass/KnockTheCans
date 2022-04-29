@@ -1,7 +1,8 @@
 using System.Collections;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEditor;
+
 using Oculus.Interaction;
 using Oculus.Interaction.HandPosing;
 
@@ -56,13 +57,13 @@ public class GameBallManager : MonoBehaviour
                 case GameBallState.Thrown:
 
                     if(gameManagerScript.IsCheatMode)
-                        CalculateCheatModeSettings();
+                        Task.Run(() => CalculateCheatModeSettings());
 
                     break;
                 case GameBallState.Inactive:
                     _centerOfMass = Vector3.zero;
                     if(gameManagerScript.IsCheatMode)
-                        CenterOfMassRep.GetComponent<MeshRenderer>().enabled = false;
+                        Task.Run(() => gameManagerScript.VisualizeCenterOfMass(false));
 
                     UpdateMaterialColor(false);
 
@@ -77,8 +78,8 @@ public class GameBallManager : MonoBehaviour
 
     // -- Variables used in the cheatmode attraction
     private Vector3 _centerOfMass = new Vector3(0,0,0);
+    private bool _assistModeVariables_ready = false;
 
-    public GameObject CenterOfMassRep;
     private Vector3 Orthonormal_to_direction;
 
     //Audio variables
@@ -134,15 +135,19 @@ public class GameBallManager : MonoBehaviour
 
     public void Reset()
     {
-        //Making it not move when reseting!!
+        // Making it not move when reseting!!
         _rigidbody.velocity = Vector3.zero;
         _rigidbody.angularVelocity = Vector3.zero;
 
-        //Reseting the object to the initial position
+        // Reseting the object to the initial position
         gameObject.transform.position = _initial_position;
         gameObject.transform.rotation = _initial_rotation;
+
+        // Resetting assist mode related variables
+        _assistModeVariables_ready = false;
+        _centerOfMass = new Vector3(0,0,0);
         
-        //Setting as active
+        // Setting as active
         ballState = GameBallState.Idle;   
     }
 
@@ -173,11 +178,6 @@ public class GameBallManager : MonoBehaviour
 
     }
 
-    // void OnCollisionEnter(Collision collision) 
-    // {
-    //     PlayCollisionAudio(collision);
-    // }
-
     void OnTriggerExit(Collider other)
     {
         // Ball respawn when it leaves the ball idle zone without being grabbed
@@ -188,7 +188,6 @@ public class GameBallManager : MonoBehaviour
 
     private void CalculateCheatModeSettings()
     {
-
         _centerOfMass = gameManagerScript.GetMeanTargetCenterOfMass();
 
         _centerOfMass = Vector3.Lerp(_centerOfMass, transform.position, .3f);
@@ -199,9 +198,11 @@ public class GameBallManager : MonoBehaviour
 
         // Cross product of x&z velocity components with the up vector returns the orthonormal vector pointing right to the ball throw
         Orthonormal_to_direction = Vector3.Cross( ballDirection, Vector3.up ).normalized;
-                  
-        // Showing the center of mass "Black hole"
-        CenterOfMassRep.transform.position = _centerOfMass;
+
+        _assistModeVariables_ready = true;
+                
+        // Run parallel task that shows the "black whole" for the assist mode
+        Task.Run(() => gameManagerScript.VisualizeCenterOfMass(true, _centerOfMass));
     }
     
 
@@ -232,7 +233,10 @@ public class GameBallManager : MonoBehaviour
 
     void AttractBallToTarget ()
     {
-
+        // Assist mode variables are calculated parallely, if they are not ready, there is no attraction
+        if( ! _assistModeVariables_ready)
+            return;
+        
         // Getting the distance vector of the ball and the center of mass
         float pull_magnitude = (_rigidbody.position - _centerOfMass).sqrMagnitude;
 

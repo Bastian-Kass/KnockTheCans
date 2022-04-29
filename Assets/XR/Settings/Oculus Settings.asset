@@ -20,10 +20,10 @@ MonoBehaviour:
   OptimizeBufferDiscards: 1
   PhaseSync: 0
   SymmetricProjection: 0
-  SubsampledLayout: 0
+  SubsampledLayout: 1
   LateLatching: 0
   LateLatchingDebug: 0
-  SpaceWarp: 0
+  SpaceWarp: 1
   TargetQuest: 1
   TargetQuest2: 1
   SystemSplashScreen: {fileID: 0}

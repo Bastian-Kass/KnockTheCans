@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -43,8 +44,8 @@ public class GameManagerScript : MonoBehaviour
     [SerializeField, Range(0, 10)]
     public float GameBallCollisionAudioThreshold = 2f;
 
-
-
+    [SerializeField]
+    public GameObject CenterOfMassRep;
 
     [System.NonSerialized]
     public UnityEvent<int> OnScoreChange;
@@ -93,6 +94,8 @@ public class GameManagerScript : MonoBehaviour
     public void BootstrapGame(){
         
         GameState = GameStateType.Bootstrap;
+
+        CenterOfMassRep.SetActive(false);
         
         ResetScore();
         
@@ -158,6 +161,7 @@ public class GameManagerScript : MonoBehaviour
     }
 
     public Vector3 GetMeanTargetCenterOfMass(){
+
         Vector3 sum_vector = new Vector3(0,0,0);
 
         int active_target_count = 0;
@@ -169,10 +173,21 @@ public class GameManagerScript : MonoBehaviour
             }
                 
         }
-        
-        sum_vector = sum_vector/active_target_count;
 
-        return sum_vector;
+        if(active_target_count > 0)
+            return sum_vector/active_target_count;
+        else 
+            return new Vector3(0,0,0);;
+        
+    }
+
+    public void VisualizeCenterOfMass(bool state, Vector3? position = null){
+        if (state == true && position != null){
+            CenterOfMassRep.transform.position = position.Value;
+            CenterOfMassRep.SetActive(true);
+        }else{
+            CenterOfMassRep.SetActive(false);
+        }
     }
 
 

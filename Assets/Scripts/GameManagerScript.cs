@@ -10,7 +10,6 @@ public class GameManagerScript : MonoBehaviour
     // --- Game Logic variables
     public ManagerSO managerSO;
 
-
     // Encapsulating the management of GameStates
     public enum GameStateType  
     {

@@ -25,6 +25,23 @@ public class GameBallManager : MonoBehaviour
     private Vector3 _initial_position;
     private Quaternion _initial_rotation;
 
+    public UnityEvent<GameBallState> OnGameBallStateChange;
+
+    // -- Variables used in the cheatmode attraction
+    private Vector3 _centerOfMass = new Vector3(0,0,0);
+    private bool _assistModeVariables_ready = false;
+
+    private LineRenderer debug_assistForce_LineRenderer;
+    public bool debug_active = true;
+
+    private Vector3 Orthonormal_to_direction;
+
+    //Audio variables
+    // [SerializeField]
+    // public AudioTrigger triggerScript_flyingball;
+    // [SerializeField]
+    // public AudioTrigger triggerScript_collision;
+
     // States for each ball in a game
     public enum GameBallState
     {
@@ -56,38 +73,33 @@ public class GameBallManager : MonoBehaviour
                     break;
                 case GameBallState.Thrown:
 
-                    if(gameManagerScript.IsCheatMode)
+                    if(gameManagerScript.IsCheatMode){
                         Task.Run(() => CalculateCheatModeSettings());
-
+                        if(debug_active)
+                            debug_assistForce_LineRenderer.enabled = true;
+                    }
+                        
                     break;
                 case GameBallState.Inactive:
+
                     _centerOfMass = Vector3.zero;
-                    if(gameManagerScript.IsCheatMode)
+
+                    if(gameManagerScript.IsCheatMode){
+
                         Task.Run(() => gameManagerScript.VisualizeCenterOfMass(false));
 
+                        if(debug_active)
+                            debug_assistForce_LineRenderer.enabled = false;
+
+                    }
+                        
                     UpdateMaterialColor(false);
-
-
 
                     break;
 
                 }
         }  
     }
-    public UnityEvent<GameBallState> OnGameBallStateChange;
-
-    // -- Variables used in the cheatmode attraction
-    private Vector3 _centerOfMass = new Vector3(0,0,0);
-    private bool _assistModeVariables_ready = false;
-
-    private Vector3 Orthonormal_to_direction;
-
-    //Audio variables
-    // [SerializeField]
-    // public AudioTrigger triggerScript_flyingball;
-    // [SerializeField]
-    // public AudioTrigger triggerScript_collision;
-
 
 
     private void Awake()
@@ -107,6 +119,9 @@ public class GameBallManager : MonoBehaviour
         Orthonormal_to_direction = new Vector3();
     }
 
+    private void Start(){
+        debug_assistForce_LineRenderer = GetComponent<LineRenderer>();
+    }
 
     public void InteractableBallGrabbed(){
         ballState = GameBallState.Grabbed;
@@ -125,9 +140,10 @@ public class GameBallManager : MonoBehaviour
         }else if( args.PreviousState.Equals(InteractorState.Select)){
             ballState = GameBallState.Thrown;
 
-            // Pragmatically, we can trigger the effect sound of the ball swishing when it leaves the throw-area
             // if(triggerScript_flyingball != null && _rigidbody.velocity.sqrMagnitude >= .5)
             //     triggerScript_flyingball.PlayAudio();
+
+
 
         }
 
@@ -146,7 +162,7 @@ public class GameBallManager : MonoBehaviour
         // Resetting assist mode related variables
         _assistModeVariables_ready = false;
         _centerOfMass = new Vector3(0,0,0);
-        
+ 
         // Setting as active
         ballState = GameBallState.Idle;   
     }
@@ -158,6 +174,7 @@ public class GameBallManager : MonoBehaviour
 
             if(gameManagerScript.IsCheatMode)
                 AttractBallToTarget();
+                
 
             // TODO: Determine if sleeping rigidbody also works
             if(_rigidbody.velocity.sqrMagnitude <= 0.002f)
@@ -249,11 +266,21 @@ public class GameBallManager : MonoBehaviour
         if( pull_magnitude < 0) pull_magnitude = 0;
         
         //Creating the force accordingly
-        Vector3 CheatModeForce = Orthonormal_to_direction * IsRightFromDirection(_centerOfMass) * pull_magnitude  ;
+        Vector3 AssistModeForce = Orthonormal_to_direction * IsRightFromDirection(_centerOfMass) * pull_magnitude  ;
 
         // Finally adding the force to the object
-        _rigidbody.AddForce(CheatModeForce);
+        _rigidbody.AddForce(AssistModeForce);
 
+        // Parallely showing debug line
+        if( debug_active )
+            Task.Run(() => visualizeAttractionForce(AssistModeForce));
+
+    }
+
+    private void visualizeAttractionForce( Vector3 AssistModeForce){
+        debug_assistForce_LineRenderer.enabled = true;
+        debug_assistForce_LineRenderer.SetPosition(1, AssistModeForce);
+                    
     }
 
     private float IsRightFromDirection(Vector3 _centerOfMass){
